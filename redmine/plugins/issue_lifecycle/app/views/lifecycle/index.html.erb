@@ -1,0 +1,418 @@
+<% content_for :header_tags do %>
+  <%= stylesheet_link_tag 'lifecycle', plugin: 'issue_lifecycle' %>
+<% end %>
+
+<h2>İş Durumu Yaşam Döngüsü</h2>
+
+<div class="box">
+  <%= form_tag(
+        { controller: "lifecycle", action: "index", project_id: @project.identifier },
+        method: :get
+      ) do %>
+
+    <p>
+      <label>Kategori:</label>
+
+      <%= select_tag(
+            :category_id,
+            options_from_collection_for_select(
+              @categories,
+              :id,
+              :name,
+              @category_id
+            ),
+            include_blank: "Tümü"
+          ) %>
+
+      <label style="margin-left: 16px;">Kullanıcı:</label>
+
+      <%= select_tag(
+            :user_id,
+            options_from_collection_for_select(
+              @users,
+              :id,
+              :name,
+              @user_id
+            ),
+            include_blank: "Tümü"
+          ) %>
+
+      <%= hidden_field_tag :sort, @sort %>
+      <%= hidden_field_tag :direction, @direction %>
+
+      <%= submit_tag "Uygula", class: "button-small", style: "margin-left: 12px;" %>
+
+      <%= link_to(
+            "Temizle",
+            { controller: "lifecycle", action: "index", project_id: @project.identifier },
+            class: "button-small"
+          ) %>
+    </p>
+
+  <% end %>
+</div>
+
+<div class="lifecycle-stats">
+  <div class="lifecycle-stat-card">
+    <div class="lifecycle-stat-label">Toplam İş</div>
+    <div class="lifecycle-stat-value">
+      <%= @stats[:total_issues] %>
+    </div>
+  </div>
+
+  <div class="lifecycle-stat-card">
+    <div class="lifecycle-stat-label">Toplam Süre</div>
+    <div class="lifecycle-stat-value">
+      <%= format_duration(@stats[:total_duration_seconds]) %>
+    </div>
+  </div>
+
+  <div class="lifecycle-stat-card">
+    <div class="lifecycle-stat-label">Ortalama Süre / İş</div>
+    <div class="lifecycle-stat-value">
+      <%= format_duration(@stats[:average_duration_seconds]) %>
+    </div>
+  </div>
+
+  <div class="lifecycle-stat-card">
+    <div class="lifecycle-stat-label">Durum Geçişi</div>
+    <div class="lifecycle-stat-value">
+      <%= @stats[:transition_count] %>
+    </div>
+  </div>
+</div>
+
+<div class="lifecycle-table-wrapper">
+  <table class="list issues odd-even">
+    <thead>
+      <tr>
+        <th><%= lifecycle_sort_link("İş No", "issue_id") %></th>
+        <th><%= lifecycle_sort_link("Konu", "subject") %></th>
+        <th><%= lifecycle_sort_link("Kategori", "category") %></th>
+
+        <% @statuses.each do |status| %>
+          <th>
+            <%= lifecycle_sort_link(status.name, "status_#{status.id}") %>
+          </th>
+        <% end %>
+
+        <th><%= lifecycle_sort_link("Toplam Süre", "total_seconds") %></th>
+        <th><%= lifecycle_sort_link("Son Değişiklik", "last_change_at") %></th>
+        <th><%= lifecycle_sort_link("Kullanıcı", "users") %></th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <% if @summary_rows.any? %>
+        <% @summary_rows.each do |row| %>
+          <tr>
+            <td>
+              <%= lifecycle_issue_detail_link(row[:issue]) %>
+            </td>
+
+            <td>
+              <%= row[:subject] %>
+            </td>
+
+            <td>
+              <%= row[:category] %>
+            </td>
+
+            <% @statuses.each do |status| %>
+              <td>
+                <%= format_duration(row[:durations_by_status_id][status.id]) %>
+              </td>
+            <% end %>
+
+            <td>
+              <strong>
+                <%= format_duration(row[:total_seconds]) %>
+              </strong>
+            </td>
+
+            <td>
+              <% if row[:last_change_at] %>
+                <%= format_time(row[:last_change_at]) %>
+              <% else %>
+                -
+              <% end %>
+            </td>
+
+            <td>
+              <%= row[:users].presence || "-" %>
+            </td>
+          </tr>
+        <% end %>
+      <% else %>
+        <tr>
+          <td colspan="<%= 6 + @statuses.size %>" class="nodata">
+            Bu projede gösterilecek yaşam döngüsü verisi bulunmuyor.
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<% if @selected_issue && @issue_detail_rows.any? %>
+  <div class="box lifecycle-issue-detail">
+    <div class="lifecycle-detail-header">
+      <div>
+        <h3>
+          İş #<%= @selected_issue.id %> -
+          <%= @selected_issue.subject %>
+        </h3>
+
+        <p>
+          Kategori:
+          <strong><%= @selected_issue.category&.name || "-" %></strong>
+          |
+          Mevcut Durum:
+          <strong><%= @selected_issue.status&.name || "-" %></strong>
+        </p>
+      </div>
+
+      <div>
+        <%= link_to(
+              "Detayı Kapat",
+              {
+                controller: "lifecycle",
+                action: "index",
+                project_id: @project.identifier,
+                sort: @sort,
+                direction: @direction,
+                category_id: params[:category_id],
+                user_id: params[:user_id]
+              },
+              class: "button-small"
+            ) %>
+      </div>
+    </div>
+
+    <h4>Seçili İşin Durum Süre Dağılımı</h4>
+
+    <% issue_total_seconds = lifecycle_total_value(@issue_detail_rows, :duration_seconds) %>
+
+    <div class="lifecycle-donut-layout lifecycle-issue-donut-layout">
+      <div
+        class="lifecycle-donut"
+        style="--donut-gradient: <%= lifecycle_donut_gradient(@issue_detail_rows, :duration_seconds) %>;">
+      </div>
+
+      <div class="lifecycle-donut-legend">
+        <% @issue_detail_rows.each_with_index do |row, index| %>
+          <div class="lifecycle-legend-row">
+            <span
+              class="lifecycle-legend-color"
+              style="background: <%= lifecycle_chart_color(index) %>;">
+            </span>
+
+            <span class="lifecycle-legend-name">
+              <%= row[:status] %>
+            </span>
+
+            <span class="lifecycle-legend-duration">
+              <%= format_duration(row[:duration_seconds]) %>
+            </span>
+
+            <span class="lifecycle-legend-percent">
+              %<%= lifecycle_percentage(row[:duration_seconds], issue_total_seconds) %>
+            </span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <h4>Durum Geçmişi</h4>
+
+    <table class="list">
+      <thead>
+        <tr>
+          <th>Durum</th>
+          <th>Başlangıç</th>
+          <th>Bitiş</th>
+          <th>Süre</th>
+          <th>Kullanıcı</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <% @issue_detail_rows.each do |row| %>
+          <tr>
+            <td>
+              <strong><%= row[:status] %></strong>
+            </td>
+
+            <td>
+              <%= format_time(row[:started_at]) %>
+            </td>
+
+            <td>
+              <% if row[:ongoing] %>
+                Devam ediyor
+              <% else %>
+                <%= format_time(row[:ended_at]) %>
+              <% end %>
+            </td>
+
+            <td>
+              <%= format_duration(row[:duration_seconds]) %>
+            </td>
+
+            <td>
+              <%= row[:user] %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>
+
+<div class="lifecycle-summary-grid">
+  <div class="box">
+    <h3>Kategoriye Göre Toplamlar</h3>
+
+    <table class="list">
+      <thead>
+        <tr>
+          <th>Kategori</th>
+          <th>İş Sayısı</th>
+          <th>Toplam Süre</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <% if @category_totals.any? %>
+          <% @category_totals.each do |row| %>
+            <tr>
+              <td><%= row[:category] %></td>
+              <td><%= row[:issue_count] %></td>
+              <td><%= format_duration(row[:total_seconds]) %></td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="3" class="nodata">
+              Kategori verisi bulunmuyor.
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="box">
+    <h3>Kullanıcıya Göre Toplamlar</h3>
+
+    <table class="list">
+      <thead>
+        <tr>
+          <th>Kullanıcı</th>
+          <th>Durum Geçişi</th>
+          <th>Toplam Süre</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <% if @user_totals.any? %>
+          <% @user_totals.each do |row| %>
+            <tr>
+              <td><%= row[:user] %></td>
+              <td><%= row[:transition_count] %></td>
+              <td><%= format_duration(row[:total_seconds]) %></td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="3" class="nodata">
+              Kullanıcı verisi bulunmuyor.
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="lifecycle-chart-grid">
+  <div class="box lifecycle-chart-box">
+    <h3>Toplam Süre - Kategoriye Göre</h3>
+
+    <% category_total_seconds = lifecycle_total_value(@category_totals) %>
+
+    <% if @category_totals.any? %>
+      <div class="lifecycle-donut-layout">
+        <div
+          class="lifecycle-donut"
+          style="--donut-gradient: <%= lifecycle_donut_gradient(@category_totals) %>;">
+        </div>
+
+        <div class="lifecycle-donut-legend">
+          <% @category_totals.each_with_index do |row, index| %>
+            <div class="lifecycle-legend-row">
+              <span
+                class="lifecycle-legend-color"
+                style="background: <%= lifecycle_chart_color(index) %>;">
+              </span>
+
+              <span class="lifecycle-legend-name">
+                <%= row[:category] %>
+              </span>
+
+              <span class="lifecycle-legend-duration">
+                <%= format_duration(row[:total_seconds]) %>
+              </span>
+
+              <span class="lifecycle-legend-percent">
+                %<%= lifecycle_percentage(row[:total_seconds], category_total_seconds) %>
+              </span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% else %>
+      <p class="nodata">Kategori grafiği için veri bulunmuyor.</p>
+    <% end %>
+  </div>
+
+  <div class="box lifecycle-chart-box">
+    <h3>Toplam Süre - Kullanıcıya Göre</h3>
+
+    <% user_total_seconds = lifecycle_total_value(@user_totals) %>
+
+    <% if @user_totals.any? %>
+      <div class="lifecycle-donut-layout">
+        <div
+          class="lifecycle-donut"
+          style="--donut-gradient: <%= lifecycle_donut_gradient(@user_totals) %>;">
+        </div>
+
+        <div class="lifecycle-donut-legend">
+          <% @user_totals.each_with_index do |row, index| %>
+            <div class="lifecycle-legend-row">
+              <span
+                class="lifecycle-legend-color"
+                style="background: <%= lifecycle_chart_color(index) %>;">
+              </span>
+
+              <span class="lifecycle-legend-name">
+                <%= row[:user] %>
+              </span>
+
+              <span class="lifecycle-legend-duration">
+                <%= format_duration(row[:total_seconds]) %>
+              </span>
+
+              <span class="lifecycle-legend-percent">
+                %<%= lifecycle_percentage(row[:total_seconds], user_total_seconds) %>
+              </span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% else %>
+      <p class="nodata">Kullanıcı grafiği için veri bulunmuyor.</p>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,214 @@
+.lifecycle-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0 20px 0;
+}
+
+.lifecycle-stat-card {
+  min-width: 190px;
+  padding: 14px 18px;
+  border: 1px solid #dddddd;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.lifecycle-stat-label {
+  font-size: 12px;
+  color: #666666;
+  margin-bottom: 6px;
+}
+
+.lifecycle-stat-value {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.lifecycle-table-wrapper {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.lifecycle-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.lifecycle-summary-grid h3 {
+  margin-top: 0;
+}
+
+/* Donut grafik alanı */
+
+.lifecycle-chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.lifecycle-chart-box h3 {
+  margin-top: 0;
+  margin-bottom: 18px;
+}
+
+.lifecycle-donut-layout {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.lifecycle-donut {
+  width: 180px;
+  height: 180px;
+  min-width: 180px;
+  border-radius: 50%;
+  background: var(--donut-gradient);
+  position: relative;
+}
+
+.lifecycle-donut::after {
+  content: "";
+  position: absolute;
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  background: #ffffff;
+  top: 49px;
+  left: 49px;
+  box-shadow: inset 0 0 0 1px #eeeeee;
+}
+
+.lifecycle-donut-legend {
+  flex: 1;
+}
+
+.lifecycle-legend-row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  margin: 9px 0;
+}
+
+.lifecycle-legend-color {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.lifecycle-legend-name {
+  font-weight: bold;
+}
+
+.lifecycle-legend-duration {
+  white-space: nowrap;
+}
+
+.lifecycle-legend-percent {
+  color: #666666;
+  white-space: nowrap;
+}
+
+/* Seçili iş detay alanı */
+
+.lifecycle-issue-detail {
+  margin: 18px 0;
+  border-left: 4px solid #628db6;
+}
+
+.lifecycle-detail-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.lifecycle-detail-header h3 {
+  margin-top: 0;
+}
+
+.lifecycle-issue-detail h4 {
+  margin-top: 18px;
+  margin-bottom: 10px;
+}
+
+.lifecycle-issue-donut-layout {
+  margin-bottom: 18px;
+}
+
+.lifecycle-bar-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 90px;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.lifecycle-bar-label {
+  font-weight: bold;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.lifecycle-bar-track {
+  height: 16px;
+  border-radius: 20px;
+  background: #eeeeee;
+  overflow: hidden;
+}
+
+.lifecycle-bar-fill {
+  height: 100%;
+  border-radius: 20px;
+  background: #628db6;
+}
+
+.lifecycle-bar-value {
+  text-align: right;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Mobil uyumluluk */
+
+@media (max-width: 900px) {
+  .lifecycle-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lifecycle-chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lifecycle-donut-layout {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lifecycle-legend-row {
+    grid-template-columns: 14px 1fr;
+  }
+
+  .lifecycle-legend-duration,
+  .lifecycle-legend-percent {
+    grid-column: 2;
+  }
+
+  .lifecycle-detail-header {
+    display: block;
+  }
+
+  .lifecycle-bar-row {
+    grid-template-columns: 1fr;
+  }
+
+  .lifecycle-bar-value {
+    text-align: left;
+  }
+}
