@@ -1,3 +1,252 @@
-= issue_lifecycle
+Issue Lifecycle Redmine Plugin
 
-Description goes here
+Bu eklenti, Redmine projelerindeki iş kayıtlarının durum değişikliklerini ve bu durumlarda geçirilen süreleri analiz etmek için geliştirilmiştir.
+
+Plugin, her proje için üst menüye `Lifecycle` adında yeni bir bağlantı ekler. Bu bağlantıya tıklandığında ilgili projedeki issue kayıtlarının yaşam döngüsü görüntülenir.
+
+Lifecycle sayfasında:
+
+- İşlerin hangi durumda ne kadar süre kaldığı
+- İş kategorisi
+- Durum değişikliğini yapan kullanıcı
+- Kategoriye göre toplamlar
+- Kullanıcıya göre toplamlar
+- Grafiksel süre dağılımları
+- Seçili işe ait detaylı durum geçmişi
+
+görülebilir.
+
+# Kurulum Rehberi
+
+## 1. Gereksinimler
+
+Bu uygulamayı çalıştırmak için aşağıdaki araçlar kullanılmıştır:
+
+- Docker
+- Docker Compose
+- Git
+
+Proje geliştirme ve test sürecinde Redmine, Docker Compose ile çalıştırılmıştır. Redmine uygulaması ve veritabanı servisi aynı Docker Compose yapısı içinde tanımlanmıştır.
+
+---
+
+## 2. Docker ile Redmine Kurulumu
+
+Bu projede Redmine kurulumu Docker Compose ile yapılmıştır.
+
+Aşağıdaki örnek `docker-compose.yml` dosyası ile Redmine uygulaması ve veritabanı servisi birlikte çalıştırılabilir:
+
+```yaml
+services:
+  db:
+    image: mariadb:11
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: redmine
+      MYSQL_USER: redmine
+      MYSQL_PASSWORD: redminepassword
+    volumes:
+      - redmine_db:/var/lib/mysql
+
+  redmine:
+    image: redmine:latest
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      REDMINE_DB_MYSQL: db
+      REDMINE_DB_DATABASE: redmine
+      REDMINE_DB_USERNAME: redmine
+      REDMINE_DB_PASSWORD: redminepassword
+    depends_on:
+      - db
+    volumes:
+      - redmine_files:/usr/src/redmine/files
+      - ./plugins:/usr/src/redmine/plugins
+
+volumes:
+  redmine_db:
+  redmine_files:
+```
+
+Bu yapı ile:
+
+- `redmine` servisi Redmine uygulamasını çalıştırır.
+- `./plugins` klasörü Redmine container içindeki `/usr/src/redmine/plugins` klasörüne bağlanır.
+- Geliştirilen plugin bu bağlantı sayesinde Redmine tarafından görülebilir.
+
+---
+
+## 3. Redmine’ı Çalıştırma
+
+Redmine klasöründe aşağıdaki komut çalıştırılır:
+
+```bash
+docker compose up -d
+```
+
+Redmine aşağıdaki adresten açılır:
+
+```text
+http://localhost:3000
+```
+
+Varsayılan giriş bilgileri:
+
+```text
+Kullanıcı adı: admin
+Şifre: 12345678
+Diğer Kullanıcı adı: User
+Şifre: 12345678 
+
+```
+
+İlk girişte Redmine yeni şifre belirlenmesini ister.
+
+---
+
+## 4. Plugin Kurulumu
+
+Redmine projesinin bulunduğu klasörde `plugins` dizinine girilir:
+
+```bash
+cd plugins
+```
+
+Plugin Git deposundan klonlanır:
+
+```bash
+git clone <PLUGIN_REPO_URL> issue_lifecycle
+```
+
+Klasör yapısı şu şekilde olmalıdır:
+
+```text
+redmine/
+└── plugins/
+    └── issue_lifecycle/
+        ├── app/
+        ├── assets/
+        ├── config/
+        ├── db/
+        ├── init.rb
+        ├── lib/
+        └── README.md
+```
+
+Plugin klasörünün doğrudan şu konumda olması gerekir:
+
+```text
+redmine/plugins/issue_lifecycle/init.rb
+```
+
+---
+
+## 5. Plugin Migration
+
+Bu eklenti yeni bir veritabanı tablosu veya kolon oluşturmaz. Issue durum geçmişi Redmine’ın mevcut `journals` ve `journal_details` kayıtlarından okunur.
+
+Bu nedenle özel bir migration dosyasına ihtiyaç duyulmamıştır.
+
+```bash
+docker exec -it redmine-redmine-1 bash
+cd /usr/src/redmine
+RAILS_ENV=production bundle exec rake redmine:plugins:migrate
+```
+
+---
+
+## 6. Redmine’ı Yeniden Başlatma
+
+Plugin eklendikten sonra Redmine yeniden başlatılır:
+
+```bash
+docker compose restart redmine
+```
+
+Container adı farklıysa aşağıdaki komut da kullanılabilir:
+
+```bash
+docker restart redmine-redmine-1
+```
+
+---
+
+## 7. Plugin’i Projede Aktifleştirme
+
+Redmine arayüzünden ilgili projeye girilir:
+
+```text
+Project → Settings → Modules
+```
+
+Bu ekranda:
+
+```text
+Issue Lifecycle
+```
+
+modülü işaretlenir ve kaydedilir.
+
+Bu işlemden sonra proje üst menüsünde:
+
+```text
+Lifecycle
+```
+
+sekmesi görünür.
+
+---
+
+# Teknik Seçimler ve Kabuller
+
+## Redmine Plugin Yapısı
+
+Uygulama Redmine’ın standart plugin mimarisi kullanılarak geliştirilmiştir. Plugin `plugins/issue_lifecycle` klasörü altında tutulmuştur.
+
+## Proje Bazlı Kullanım
+
+Eklenti `project_module` olarak tanımlanmıştır. Böylece her proje için ayrı ayrı açılıp kapatılabilir. Proje üst menüsüne `Lifecycle` bağlantısı eklenerek kullanıcıların ilgili proje içinden rapora doğrudan ulaşması sağlanmıştır.
+
+## Veri Kaynağı
+
+Issue durum değişiklikleri Redmine’ın mevcut `journals` ve `journal_details` kayıtlarından okunmuştur. Yeni bir veritabanı tablosu oluşturulmamıştır. Bu nedenle özel bir migration dosyasına ihtiyaç duyulmamıştır.
+
+Bu tercih sayesinde mevcut Redmine verisi tekrar saklanmamış, veri tekrarı ve tutarsızlık riski azaltılmıştır.
+
+## Hesaplama Mantığı
+
+Bir issue’nun durumlarda geçirdiği süreler şu şekilde hesaplanmıştır:
+
+- İlk durum süresi, issue oluşturulma tarihi ile ilk durum değişikliği arasındadır.
+- Ara durum süreleri, iki durum değişikliği arasındaki zamandır.
+- Son durum süresi, son değişiklik tarihi ile mevcut zaman arasındadır.
+
+Devam eden son durum için bitiş zamanı olarak `Time.current` kullanılmıştır.
+
+## Kod Yapısı
+
+Lifecycle hesaplamaları controller içinde yapılmamıştır. Bu işlemler `IssueLifecycleService` sınıfına taşınmıştır.
+
+Bu tercih sayesinde controller sade tutulmuş, hesaplama mantığı tek bir yerde toplanmış ve kodun okunabilirliği artırılmıştır.
+
+## Sıralama, Filtreleme ve Grafikler
+
+Lifecycle tablosunda iş numarası, konu, kategori, durum süreleri, toplam süre ve kullanıcı alanlarına göre sıralama yapılabilir.
+
+Arayüzde kategori ve kullanıcı filtreleri eklenmiştir. Bu filtreler ana tabloyu, özet kartlarını, toplam tablolarını ve grafikleri etkiler.
+
+Grafikler için harici JavaScript kütüphanesi kullanılmamıştır. Donut grafikler CSS `conic-gradient` ile oluşturulmuştur.
+
+## Performans Tercihi
+
+Issue kayıtları alınırken ilişkili veriler `includes` ile birlikte yüklenmiştir:
+
+```ruby
+@project.issues.includes(
+  :category,
+  :author,
+  :status,
+  journals: [:user, :details]
+)
