@@ -199,6 +199,14 @@ sekmesi görünür.
 
 ---
 
+# Ekran Görüntüsü
+
+Aşağıdaki ekran görüntüsünde Lifecycle sayfasının genel görünümü yer almaktadır. Bu sayfada işlerin durum süreleri, kategori ve kullanıcı bilgileri, sıralama, filtreleme, toplam tabloları ve grafik gösterimleri bulunmaktadır.
+
+![Issue Lifecycle Dashboard](docs/images/redmine.png)
+
+---
+
 # Teknik Seçimler ve Kabuller
 
 ## Redmine Plugin Yapısı
