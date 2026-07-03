@@ -1,4 +1,4 @@
-# Issue Lifecycle Redmine Plugin
+Issue Lifecycle Redmine Plugin
 
 Bu eklenti, Redmine projelerindeki iş kayıtlarının durum değişikliklerini ve bu durumlarda geçirilen süreleri analiz etmek için geliştirilmiştir.
 
